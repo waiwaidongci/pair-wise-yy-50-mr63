@@ -8,6 +8,7 @@ const props = defineProps<{
   zoom: number
   selected: string | null
   validations: Validation[]
+  paperLabel?: string
 }>()
 
 const emit = defineEmits<{
@@ -49,7 +50,7 @@ function draw() {
   ctx.fillText(`${props.side === 'front' ? '正面' : '反面'}拼版版式`, 48, 28)
   ctx.font = '11px sans-serif'
   ctx.fillStyle = '#76848a'
-  ctx.fillText(`纸张 720 × 1020 mm · 出血 3mm · 安全区 5mm · 骑马订`, 180, 28)
+  ctx.fillText(`纸张 ${props.paperLabel ?? '720 × 1020 mm'} · 出血 3mm · 安全区 5mm · 骑马订`, 180, 28)
 
   props.positions.filter((item) => item.front === (props.side === 'front')).forEach((position) => {
     const x = position.x
@@ -57,6 +58,7 @@ function draw() {
     const pageWidth = 300
     const pageHeight = 410
     const hasIssue = props.validations.some((issue) => issue.pageNo === position.pageNo)
+    const stale = position.status === '待重算'
     ctx.save()
     ctx.translate(x + pageWidth / 2, y + pageHeight / 2)
     ctx.rotate((position.rotation * Math.PI) / 180)
@@ -65,11 +67,11 @@ function draw() {
       ctx.shadowColor = 'rgba(31,113,123,.35)'
       ctx.shadowBlur = 14
     }
-    ctx.fillStyle = '#f7f7f2'
+    ctx.fillStyle = stale ? '#fff3ec' : '#f7f7f2'
     ctx.fillRect(0, 0, pageWidth, pageHeight)
     ctx.shadowBlur = 0
-    ctx.strokeStyle = hasIssue ? '#c64f35' : '#647c82'
-    ctx.lineWidth = position.id === props.selected ? 3 : 1.5
+    ctx.strokeStyle = stale ? '#e67e22' : hasIssue ? '#c64f35' : '#647c82'
+    ctx.lineWidth = position.id === props.selected || stale ? 3 : 1.5
     ctx.strokeRect(0, 0, pageWidth, pageHeight)
     ctx.strokeStyle = '#df7654'
     ctx.setLineDash([7, 5])
@@ -87,6 +89,13 @@ function draw() {
     ctx.font = '11px sans-serif'
     ctx.fillStyle = '#718187'
     ctx.fillText(position.rotation ? `旋转 ${position.rotation}°` : '方向 0°', pageWidth / 2, pageHeight / 2 + 14)
+    if (stale) {
+      ctx.fillStyle = '#e67e22'
+      ctx.fillRect(0, 0, 74, 20)
+      ctx.fillStyle = '#fff'
+      ctx.font = 'bold 11px sans-serif'
+      ctx.fillText('待重算', 37, 14)
+    }
     ctx.restore()
   })
 }

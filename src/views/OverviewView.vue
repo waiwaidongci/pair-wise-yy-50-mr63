@@ -3,11 +3,13 @@ import { computed } from 'vue'
 import Button from 'primevue/button'
 import ProgressBar from 'primevue/progressbar'
 import Tag from 'primevue/tag'
+import PaperChangeDialog from '../components/PaperChangeDialog.vue'
 import { useImpositionStore } from '../stores/imposition'
 
 const store = useImpositionStore()
 const errors = computed(() => store.validations.filter((item) => item.severity === '错误').length)
 const pendingProof = computed(() => store.proofs.find((proof) => proof.decision === '待决定'))
+const staleProofs = computed(() => store.proofs.filter((proof) => proof.stale).length)
 </script>
 
 <template>
@@ -23,6 +25,38 @@ const pendingProof = computed(() => store.proofs.find((proof) => proof.decision 
       <article class="metric"><span>打样轮次</span><strong>{{ store.proofs.length }}</strong><small>当前 ΔE {{ pendingProof?.deltaE ?? '—' }}</small></article>
       <article class="metric"><span>待恢复导出</span><strong>{{ store.tasks.filter((task) => task.resumable && task.status !== '已完成').length }}</strong><small>断点可继续</small></article>
     </div>
+
+    <section class="panel batch-panel">
+      <div class="panel-head">
+        <h3>纸张批次</h3>
+        <Button label="登记新批次 / 换纸" icon="pi pi-refresh" size="small" @click="store.openPaperDialog" />
+      </div>
+      <div class="batch-current">
+        <div class="batch-id">
+          <strong>{{ store.currentBatch?.id }}</strong>
+          <Tag value="当前批次" severity="success" />
+          <Tag value="规格已冻结" severity="info" icon="pi pi-lock" />
+        </div>
+        <div class="batch-specs">
+          <span>纸宽 <b>{{ store.currentBatch?.width }}</b> mm</span>
+          <span>纸高 <b>{{ store.currentBatch?.height }}</b> mm</span>
+          <span>克重 <b>{{ store.currentBatch?.grammage }}</b> g/m²</span>
+          <span>纸纹 <b>{{ store.currentBatch?.grain }}</b></span>
+        </div>
+        <small>登记于 {{ store.currentBatch?.registeredAt }} · {{ store.currentBatch?.registeredBy }}</small>
+      </div>
+      <div class="batch-history">
+        <div v-for="batch in store.paperBatches.filter((item) => item.status === '历史')" :key="batch.id" class="batch-row">
+          <strong>{{ batch.id }}</strong>
+          <span>{{ batch.width }} × {{ batch.height }}mm · {{ batch.grammage }}g/m² · {{ batch.grain }}</span>
+          <small>{{ batch.registeredAt }} · {{ batch.registeredBy }}</small>
+        </div>
+      </div>
+      <div v-if="staleProofs" class="batch-note">
+        <i class="pi pi-exclamation-triangle" />
+        <span>{{ staleProofs }} 轮打样依据旧批次，换纸后结论待复核；受影响跨页组的导出分片需重算，其余分片依据一致时复用。</span>
+      </div>
+    </section>
 
     <div class="overview-grid">
       <section class="panel">
@@ -65,6 +99,8 @@ const pendingProof = computed(() => store.proofs.find((proof) => proof.decision 
         </section>
       </aside>
     </div>
+
+    <PaperChangeDialog />
   </section>
 </template>
 
@@ -90,5 +126,18 @@ aside { display: grid; gap: 14px; }
 .export-mini > div:not(.panel-head) { padding: 11px 16px 4px; }
 .export-mini > div > div { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 11px; }
 .export-mini small { display: block; margin-top: 5px; color: #7d898e; }
+.batch-panel { margin-bottom: 14px; }
+.batch-current { padding: 4px 18px 12px; }
+.batch-id { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.batch-id strong { font-size: 15px; }
+.batch-specs { display: flex; flex-wrap: wrap; gap: 18px; font-size: 12px; color: #5d7077; }
+.batch-specs b { color: #2f464d; font-size: 14px; }
+.batch-current small { display: block; margin-top: 8px; color: #8a979b; font-size: 10px; }
+.batch-history { padding: 0 18px 14px; }
+.batch-row { display: flex; align-items: baseline; gap: 12px; padding: 8px 0; border-top: 1px solid #ecf0f0; font-size: 12px; }
+.batch-row strong { color: #45676d; }
+.batch-row span { color: #5d7077; }
+.batch-row small { margin-left: auto; color: #8a979b; font-size: 10px; }
+.batch-note { display: flex; align-items: center; gap: 8px; margin: 0 18px 16px; padding: 10px 12px; border-left: 3px solid #c98236; border-radius: 6px; background: #fff5e8; color: #716555; font-size: 11px; }
 @media (max-width: 1050px) { .overview-grid { grid-template-columns: 1fr; } }
 </style>

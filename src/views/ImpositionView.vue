@@ -6,6 +6,7 @@ import Slider from 'primevue/slider'
 import Tag from 'primevue/tag'
 import Message from 'primevue/message'
 import ImpositionCanvas from '../components/ImpositionCanvas.vue'
+import PaperChangeDialog from '../components/PaperChangeDialog.vue'
 import { useImpositionStore } from '../stores/imposition'
 
 const store = useImpositionStore()
@@ -15,6 +16,9 @@ const sideOptions = [
 ]
 const selected = computed(() => store.positions.find((item) => item.id === store.selectedPosition))
 const activeValidations = computed(() => store.validations.filter((item) => !item.pageNo || item.pageNo === selected.value?.pageNo || sideContains(item.pageNo)))
+const staleCount = computed(() => store.positions.filter((item) => item.status === '待重算').length)
+const staleGroupCount = computed(() => new Set(store.positions.filter((item) => item.status === '待重算' && item.groupId).map((item) => item.groupId)).size)
+const keptCount = computed(() => store.positions.length - staleCount.value)
 
 function sideContains(pageNo?: number) {
   if (!pageNo) return true
@@ -41,11 +45,22 @@ function locate(pageNo?: number) {
       当前版本有 {{ store.validations.filter((item) => item.severity === '错误').length }} 个阻断错误和 {{ store.validations.filter((item) => item.severity === '警告').length }} 个警告。
     </Message>
 
+    <Message v-if="staleCount" severity="error" :closable="false" class="mb-3">
+      <div class="stale-banner">
+        <span>换纸后 {{ staleGroupCount }} 个跨页组失效，{{ staleCount }} 个版位待重算；其余 {{ keptCount }} 个版位已保留。重算将按新纸张安全区重排受影响版位。</span>
+        <Button label="自动重算受影响版位" icon="pi pi-refresh" size="small" @click="store.recalcAffectedPositions" />
+      </div>
+    </Message>
+
     <div class="toolbar panel">
       <SelectButton v-model="store.side" :options="sideOptions" optionLabel="label" optionValue="value" />
       <span class="muted">缩放 {{ store.zoom }}%</span>
       <Slider v-model="store.zoom" :min="35" :max="100" :step="5" style="width:150px" />
-      <span class="paper-spec">720 × 1020mm · 出血 3mm · 安全区 5mm · {{ store.locked ? '基线只读' : '编辑中' }}</span>
+      <span class="paper-spec">
+        <Tag :value="store.currentBatch?.id" severity="info" />
+        {{ store.currentBatch?.width }} × {{ store.currentBatch?.height }}mm · {{ store.currentBatch?.grammage }}g/m² · 规格已冻结 · 出血 3mm · 安全区 5mm · {{ store.locked ? '基线只读' : '编辑中' }}
+      </span>
+      <Button label="换纸" icon="pi pi-refresh" size="small" outlined @click="store.openPaperDialog" />
       <Button v-if="!store.locked" label="审批锁定" icon="pi pi-lock" size="small" @click="store.lockBaseline" />
       <Button v-else label="解锁修订" icon="pi pi-lock-open" size="small" severity="warn" outlined @click="store.unlock" />
     </div>
@@ -71,6 +86,7 @@ function locate(pageNo?: number) {
             :zoom="store.zoom"
             :selected="store.selectedPosition"
             :validations="store.validations"
+            :paper-label="`${store.currentBatch?.width} × ${store.currentBatch?.height} mm`"
             @select="store.selectedPosition = $event"
             @update="store.updatePosition"
           />
@@ -101,6 +117,8 @@ function locate(pageNo?: number) {
         </section>
       </aside>
     </div>
+
+    <PaperChangeDialog />
   </section>
 </template>
 
@@ -108,7 +126,8 @@ function locate(pageNo?: number) {
 .actions { display: flex; gap: 8px; }
 .mb-3 { margin-bottom: 12px; }
 .toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; padding: 12px; }
-.paper-spec { margin-left: auto; color: #5d7077; font-size: 11px; }
+.paper-spec { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; color: #5d7077; font-size: 11px; }
+.stale-banner { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .imposition-grid { display: grid; grid-template-columns: 220px minmax(0,1fr) 340px; gap: 12px; align-items: start; }
 .pages-panel { max-height: 760px; overflow: auto; }
 .page-list { padding: 8px; }

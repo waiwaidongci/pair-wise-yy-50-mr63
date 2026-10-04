@@ -11,6 +11,7 @@ const mobileOpen = ref(false)
 const title = computed(() => String(route.meta.title ?? '拼版工作台'))
 const nav = [
   { to: '/', label: '生产总览', icon: 'pi pi-chart-pie' },
+  { to: '/paper', label: '纸张批次', icon: 'pi pi-box' },
   { to: '/imposition', label: '拼版工作区', icon: 'pi pi-th-large' },
   { to: '/proofs', label: '打样审批', icon: 'pi pi-image' },
   { to: '/versions', label: '版本对比', icon: 'pi pi-copy' },
@@ -27,7 +28,8 @@ const nav = [
         <RouterLink v-for="item in nav" :key="item.to" :to="item.to" @click="mobileOpen = false"><i :class="item.icon" />{{ item.label }}</RouterLink>
       </nav>
       <div class="sidebar-status">
-        <div><span :class="{ warn: !store.locked }" />{{ store.locked ? '基线已审批锁定' : `${store.validations.length} 项预检提示` }}</div>
+        <div><span :class="{ warn: !store.locked }" />{{ store.lockHeldByOther ? `${store.paperLockState?.owner} 正在换纸` : store.locked ? '基线已审批锁定' : `${store.validations.length} 项预检提示` }}</div>
+        <small>用纸 {{ store.activeBatch.code }} · {{ store.activeBatch.width }}×{{ store.activeBatch.height }}/{{ store.activeBatch.gsm }}g</small>
         <small>版本 {{ store.revision }} · 自动保存草稿</small>
       </div>
     </aside>

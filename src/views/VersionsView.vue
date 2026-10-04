@@ -26,11 +26,11 @@ const changes = [
     <div class="compare-grid">
       <section class="panel">
         <div class="panel-head"><h3>基线 R5</h3><Tag value="只读" /></div>
-        <div class="canvas-box"><ImpositionCanvas :positions="store.positions" side="front" :zoom="38" :selected="null" :validations="store.validations" @update="() => {}" @select="() => {}" /></div>
+        <div class="canvas-box"><ImpositionCanvas :positions="store.positions" side="front" :zoom="38" :selected="null" :validations="store.validations" :paper-width="store.activeBatch.width" :paper-height="store.activeBatch.height" :paper-code="store.activeBatch.code" :interactive="false" @update="() => {}" @select="() => {}" /></div>
       </section>
       <section class="panel candidate">
-        <div class="panel-head"><h3>候选 R6</h3><Tag value="4 项变更" severity="warn" /></div>
-        <div class="canvas-box"><ImpositionCanvas :positions="store.positions" side="front" :zoom="38" :selected="null" :validations="store.validations" @update="() => {}" @select="() => {}" /></div>
+        <div class="panel-head"><h3>候选 R6 · {{ store.activeBatch.code }}</h3><Tag value="4 项变更" severity="warn" /></div>
+        <div class="canvas-box"><ImpositionCanvas :positions="store.positions" side="front" :zoom="38" :selected="null" :validations="store.validations" :paper-width="store.activeBatch.width" :paper-height="store.activeBatch.height" :paper-code="store.activeBatch.code" :interactive="false" @update="() => {}" @select="() => {}" /></div>
       </section>
     </div>
 

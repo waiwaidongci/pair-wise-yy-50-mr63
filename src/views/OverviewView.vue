@@ -8,6 +8,9 @@ import { useImpositionStore } from '../stores/imposition'
 const store = useImpositionStore()
 const errors = computed(() => store.validations.filter((item) => item.severity === '错误').length)
 const pendingProof = computed(() => store.proofs.find((proof) => proof.decision === '待决定'))
+const invalidatedCount = computed(() => store.positions.filter((p) => p.status === 'invalidated').length)
+const pendingReviewCount = computed(() => store.tasks.filter((task) => task.status === '待复核').length)
+const staleProofCount = computed(() => store.proofs.filter((proof) => store.proofBasisState(proof) === '旧依据').length)
 </script>
 
 <template>
@@ -18,10 +21,10 @@ const pendingProof = computed(() => store.proofs.find((proof) => proof.decision 
     </div>
 
     <div class="metric-grid">
-      <article class="metric"><span>页面文件</span><strong>{{ store.pages.length }}</strong><small>{{ store.positions.length }} 个已排版位</small></article>
-      <article class="metric"><span>预检错误</span><strong class="error">{{ errors }}</strong><small>必须处理后方可锁定</small></article>
-      <article class="metric"><span>打样轮次</span><strong>{{ store.proofs.length }}</strong><small>当前 ΔE {{ pendingProof?.deltaE ?? '—' }}</small></article>
-      <article class="metric"><span>待恢复导出</span><strong>{{ store.tasks.filter((task) => task.resumable && task.status !== '已完成').length }}</strong><small>断点可继续</small></article>
+      <article class="metric"><span>在用纸批次</span><strong class="batch">{{ store.activeBatch.code }}</strong><small>{{ store.activeBatch.width }}×{{ store.activeBatch.height }}mm · {{ store.activeBatch.gsm }}g</small></article>
+      <article class="metric"><span>预检错误</span><strong class="error">{{ errors }}</strong><small>{{ invalidatedCount }} 个版位换纸失效待重算</small></article>
+      <article class="metric"><span>打样依据</span><strong :class="staleProofCount ? 'warn-num' : ''">{{ store.proofs.length }} 轮</strong><small>{{ staleProofCount }} 轮基于旧纸批次</small></article>
+      <article class="metric"><span>待复核 / 待恢复</span><strong>{{ pendingReviewCount }} / {{ store.tasks.filter((task) => task.resumable && task.status !== '已完成' && task.status !== '待复核').length }}</strong><small>缺依据先待复核，不续传</small></article>
     </div>
 
     <div class="overview-grid">
@@ -30,16 +33,16 @@ const pendingProof = computed(() => store.proofs.find((proof) => proof.decision 
         <div class="project-card">
           <div>
             <strong>《潮汐来信》上海巡演节目册</strong>
-            <p>成品 210 × 297mm · 8P · 骑马订 · 720 × 1020mm 对开纸</p>
-            <div class="specs"><span>CMYK + 专色</span><span>纵向纸纹</span><span>PDF/X-4</span><span>色彩控制条已配置</span></div>
+            <p>成品 210 × 297mm · 8P · 骑马订 · {{ store.activeBatch.width }} × {{ store.activeBatch.height }}mm 对开纸 · {{ store.activeBatch.gsm }}g</p>
+            <div class="specs"><span>CMYK + 专色</span><span>纵向纸纹</span><span>PDF/X-4</span><span>用纸 {{ store.activeBatch.code }}</span></div>
           </div>
-          <Button label="打开拼版" icon="pi pi-arrow-right" @click="$router.push('/imposition')" />
+          <Button label="纸张批次/换纸" icon="pi pi-box" @click="$router.push('/paper')" />
         </div>
         <div class="checklist">
           <div><i class="pi pi-check-circle" /><span>页面尺寸与成品规格</span><Tag value="通过" severity="success" /></div>
           <div><i class="pi pi-exclamation-triangle warn" /><span>折手与页码顺序</span><Tag value="1 项警告" severity="warn" /></div>
-          <div><i class="pi pi-times-circle error" /><span>出血与版位安全区</span><Tag :value="`${errors} 项错误`" severity="danger" /></div>
-          <div><i class="pi pi-check-circle" /><span>色彩控制条与纸张规格</span><Tag value="通过" severity="success" /></div>
+          <div><i :class="errors ? 'pi pi-times-circle error' : 'pi pi-check-circle'" /><span>出血、安全区与换纸失效重算</span><Tag :value="`${errors} 项错误`" :severity="errors ? 'danger' : 'success'" /></div>
+          <div><i class="pi pi-check-circle" /><span>色彩控制条与纸张冻结规格</span><Tag :value="store.activeBatch.code" severity="success" /></div>
         </div>
       </section>
 
@@ -71,6 +74,8 @@ const pendingProof = computed(() => store.proofs.find((proof) => proof.decision 
 <style scoped>
 .actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .metric .error { color: #b84e35; }
+.metric .batch { font-size: 20px; color: #337b79; }
+.metric .warn-num { color: #bf7f2c; }
 .overview-grid { display: grid; grid-template-columns: minmax(0,1fr) 350px; gap: 14px; align-items: start; }
 .project-card { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 22px; }
 .project-card strong { font-size: 17px; }
